@@ -25,6 +25,7 @@ func Upgrade(w http.ResponseWriter, r *http.Request) (*websocket.Conn, error) {
 	return ws, nil
 }
 
+//ESTO ES UNA PRUEBA PARA VER EN EL GITHUB
 func Reader(conn *websocket.Conn) {
 	for {
 		messageType, p, err := conn.ReadMessage()
