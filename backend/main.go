@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/websocket"
+	"github.com/romenrf/GoReact02/blob/master/backend/websocket"
 )
 
 // Creamos un UPGRADER para leer y escribit en el buffer
