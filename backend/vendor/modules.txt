@@ -1,6 +1,9 @@
 # github.com/gorilla/websocket v1.4.1
 ## explicit
 github.com/gorilla/websocket
+# github.com/mattn/go-sqlite3 v2.0.3+incompatible
+## explicit
+github.com/mattn/go-sqlite3
 # github.com/romenrf/websocket v0.0.0-20200311092251-e4129d666e27
 ## explicit
 github.com/romenrf/websocket

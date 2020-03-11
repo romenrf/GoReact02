@@ -1,43 +1,90 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
-
-	"github.com/romenrf/websocket"
+	"os"
+	_ "github.com/romenrf/websocket"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-/* Creamos un UPGRADER para leer y escribit en el buffer
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+//MODULOS CONEXION CON LA BASE DE DATOS
+func llamarSqLite3() {
+	log.Println("Creating sqlite-database.db...")
+	sqlfile, err := os.Create("sqlite-database.db")
+	if err != nil {
+		os.Remove("sqlite-database.db")
+		sqlfile2, err2 := os.Create("sqlite-database.db")
+		if err2 != nil {
+			log.Fatal(err2.Error())
+		} else {
+			sqlfile = sqlfile2
+		}
+	}
+	sqlfile.Close()
+	log.Println("sqlite-database.db created")
 
-	//Chekeamos el origen de nuestra conexión
-	//Esto nos permite hacer peticiones desde nuestro React
-	CheckOrigin: func(r *http.Request) bool { return true },
+	sqliteDatabase, _ := sql.Open("sqlite3", "./sqlite-database.db")
+	defer sqliteDatabase.Close()
+
+	createTable(sqliteDatabase)
+
+	insertUser(sqliteDatabase, "2", "Paco", "francisco@gmail.com")
+
 }
 
-// Creamos un READER el cual escucha los nuevos mensajes enviados por nuestro WEBSOCKET
-func reader(conn *websocket.Conn) {
-	for {
-		// Leemos el mensaje
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		// Mostramos el mensaje
-		fmt.Println(string(p))
+func createTable(db *sql.DB) {
+	createStudentTableSQL := `CREATE TABLE users (
+		"id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,		
+		"name" TEXT,
+		"mail" TEXT,		
+	  );` // SQL Statement for Create Table
 
-		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Println(err)
-			return
-		}
-
+	log.Println("Creando tabla users...")
+	statement, err := db.Prepare(createStudentTableSQL) // Prepare SQL Statement
+	if err != nil {
+		log.Fatal(err.Error())
 	}
-}*/
+	statement.Exec() // Execute SQL Statements
+	log.Println("Tabla usuarios creada")
+}
 
+
+func insertUser(db *sql.DB, id string, name string, mail string){
+	log.Println("Insertando usuario...")
+	insertUserSQL := `INSERT INTO users (id, name, mail) values (?,?,?)`
+
+	statement, err := db.Prepare(insertUserSQL)
+
+	injections 
+		if err != nil{
+			log.Fatalln(err.Error())
+		}
+		_, err = statement.Exec(id,name,mail)
+		if err != nil{
+			log.Fatalln(err.Error())
+		}
+}
+
+func displayUsers(db *sql.DB){
+	row, err := db.Query("SELECT * FROM users ORDER BY name")
+	if err != nil{
+		log.Fatalln(err)
+	}
+	defer row.Close()
+
+	for row.Next(){
+		var id integer
+		var name string
+		var mail string
+		row.Scan(&id,&name,&mail)
+		log.Println("Usuario: ",id," ",name," ",mail)
+	}
+}
+
+//MODULO DE WEBSERVICE
 // Creamos nuestro websocket
 func serveWs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Server Go listo en: ", r.Host)

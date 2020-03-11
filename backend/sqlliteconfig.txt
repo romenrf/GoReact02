@@ -1,0 +1,6 @@
+//sqlite3 
+
+.table  // para ver las tablas
+
+.schema [table] //para ver el esquema de una tablas
+
