@@ -43,12 +43,12 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Server Go listo en: ", r.Host)
 
 	//Hacemos UPGRADE de nuestra conexión
-	ws, err := websocket.Upgrade(w, r, nil)
+	ws, err := websocket.Upgrade(w, r)
 	if err != nil {
 		log.Println(err)
 	}
 	//Escuchamos los nuevos mensajes entrantes por el WEBSOCKET
-	go websocket.Write(ws)
+	go websocket.Writer(ws)
 	websocket.Reader(ws)
 }
 
