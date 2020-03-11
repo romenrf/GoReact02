@@ -5,83 +5,153 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	_ "github.com/romenrf/websocket"
+	"github.com/romenrf/websocket"
 	_ "github.com/mattn/go-sqlite3"
+	"errors"
+	"encoding/json"
 )
 
 //MODULOS CONEXION CON LA BASE DE DATOS
-func llamarSqLite3() {
-	log.Println("Creating sqlite-database.db...")
-	sqlfile, err := os.Create("sqlite-database.db")
-	if err != nil {
-		os.Remove("sqlite-database.db")
-		sqlfile2, err2 := os.Create("sqlite-database.db")
-		if err2 != nil {
-			log.Fatal(err2.Error())
-		} else {
-			sqlfile = sqlfile2
-		}
-	}
-	sqlfile.Close()
-	log.Println("sqlite-database.db created")
-
-	sqliteDatabase, _ := sql.Open("sqlite3", "./sqlite-database.db")
-	defer sqliteDatabase.Close()
-
-	createTable(sqliteDatabase)
-
-	insertUser(sqliteDatabase, "2", "Paco", "francisco@gmail.com")
-
+type User struct{
+	ID int `json:"id,omitempty"`
+	Name string `json:"name"`
+	Mail string `json:mail`
 }
 
-func createTable(db *sql.DB) {
-	createStudentTableSQL := `CREATE TABLE users (
-		"id" integer NOT NULL PRIMARY KEY AUTOINCREMENT,		
-		"name" TEXT,
-		"mail" TEXT,		
-	  );` // SQL Statement for Create Table
+var db *sql.DB
 
-	log.Println("Creando tabla users...")
-	statement, err := db.Prepare(createStudentTableSQL) // Prepare SQL Statement
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	statement.Exec() // Execute SQL Statements
-	log.Println("Tabla usuarios creada")
+func GetConnection() *sql.DB {
+    // Para evitar realizar una nueva conexión en cada llamada a
+    // la función GetConnection.
+    if db != nil {
+        return db
+    }
+    // Declaramos la variable err para poder usar el operador
+    // de asignación “=” en lugar que el de asignación corta,
+    // para evitar que cree una nueva variable db en este scope y
+    // en su lugar que inicialice la variable db que declaramos a
+    // nivel de paquete.
+    var err error
+    // Conexión a la base de datos
+    db, err = sql.Open("sqlite3", "./users.db")
+    if err != nil {
+        panic(err)
+    }
+    return db
 }
 
 
-func insertUser(db *sql.DB, id string, name string, mail string){
-	log.Println("Insertando usuario...")
+func (itemUser User)crearUser() error {
+	db := GetConnection()
 	insertUserSQL := `INSERT INTO users (id, name, mail) values (?,?,?)`
-
 	statement, err := db.Prepare(insertUserSQL)
+	if err != nil{
+		return err
+	}
 
-	injections 
-		if err != nil{
-			log.Fatalln(err.Error())
-		}
-		_, err = statement.Exec(id,name,mail)
-		if err != nil{
-			log.Fatalln(err.Error())
-		}
+	defer statement.Close()
+
+	resultRow, err := statement.Exec(itemUser.ID,itemUser.Name,itemUser.Mail)
+	if err != nil{
+		return err
+	}
+
+	if itemRow,err := resultRow.RowsAffected(); err != nil || itemRow != 1{
+		return errors.New("Error: Se esperaba una fila afectada")
+	}
+
+	return nil
+	
 }
 
-func displayUsers(db *sql.DB){
-	row, err := db.Query("SELECT * FROM users ORDER BY name")
+func (itemUser *User)displayUsers() ([]User, error){
+	db := GetConnection()
+	rows, err := db.Query("SELECT * FROM users ORDER BY name")
 	if err != nil{
-		log.Fatalln(err)
+		return []User{}, err
 	}
-	defer row.Close()
+	defer rows.Close()
 
-	for row.Next(){
-		var id integer
-		var name string
-		var mail string
-		row.Scan(&id,&name,&mail)
-		log.Println("Usuario: ",id," ",name," ",mail)
+	resultUsers := []User{}
+
+	for rows.Next(){
+		rows.Scan(
+			&itemUser.ID,
+			&itemUser.Name,
+			&itemUser.Mail)
+		resultUsers = append(resultUsers, *itemUser)
 	}
+	return resultUsers,nil
+}
+
+// GetNotesHandler nos permite manejar las peticiones a la ruta
+// ‘/notes’ con el método GET vía JSON
+func GetUsersHandler(w http.ResponseWriter, r *http.Request) {
+    // Puntero a una estructura de tipo Note.
+    newUser := new(User)
+    // Solicitando todas las usuarios en la base de datos.
+    users, err := newUser.displayUsers()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusNotFound)
+        return
+    }
+    // Convirtiendo el slice de usuarios a formato JSON,
+    // retorna un []byte y un error.
+    resultJSON, err := json.Marshal(users)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+    // Escribiendo el código de respuesta.
+    w.WriteHeader(http.StatusOK)
+    // Estableciendo el tipo de contenido del cuerpo de la
+    // respuesta.
+    w.Header().Set("Content-Type", "application/json")
+    // Escribiendo la respuesta, es decir nuestro slice de notas
+    // en formato JSON.
+    w.Write(resultJSON)
+}
+
+
+func CreateUserHandler(w http.ResponseWriter, r *http.Request) {
+    var newUser User
+// Tomando el cuerpo de la petición, en formato JSON, y
+    // decodificándola e la variable note que acabamos de
+    // declarar.
+    err := json.NewDecoder(r.Body).Decode(&newUser)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+// Creamos la nueva nota gracias al método Create.
+    err = newUser.crearUser()
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    w.WriteHeader(http.StatusOK)
+}
+
+
+
+
+func handlerUsers(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+        case http.MethodGet:
+            GetUsersHandler(w, r)
+        case http.MethodPost:
+            CreateUserHandler(w, r)
+        /*case http.MethodPut:
+            UpdateNotesHandler(w, r)
+        case http.MethodDelete:
+            DeleteNotesHandler(w, r)*/
+        default:
+            // Caso por defecto en caso de que se realice una
+            // petición con un método diferente a los esperados.
+            http.Error(w, "Metodo no permitido",
+                http.StatusBadRequest)
+            return
+    }
 }
 
 //MODULO DE WEBSERVICE
@@ -99,13 +169,15 @@ func serveWs(w http.ResponseWriter, r *http.Request) {
 	websocket.Reader(ws)
 }
 
+
+// setupRoutes nos permite manejar la petición a la ruta ‘/users // y pasa el control a la función correspondiente según el método
+// de la petición.
+//modifico y por defecto intento activar el websocket
 func setupRoutes() {
-	/*http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Servidor Go con WEBSOCKET")
-	})*/
-	// mape our `/ws` endpoint to the `serveWs` function
 	http.HandleFunc("/ws", serveWs)
+	http.HandleFunc("/users", handlerUsers)    
 }
+
 
 func main() {
 	setupRoutes()
