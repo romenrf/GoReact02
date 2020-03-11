@@ -5,10 +5,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/romenrf/GoReact02/blob/master/backend/websocket"
+	"github.com/romenrf/websocket"
 )
 
-// Creamos un UPGRADER para leer y escribit en el buffer
+/* Creamos un UPGRADER para leer y escribit en el buffer
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -36,25 +36,26 @@ func reader(conn *websocket.Conn) {
 		}
 
 	}
-}
+}*/
 
 // Creamos nuestro websocket
 func serveWs(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Server Go listo en: ", r.Host)
 
 	//Hacemos UPGRADE de nuestra conexión
-	ws, err := upgrader.Upgrade(w, r, nil)
+	ws, err := websocket.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 	}
 	//Escuchamos los nuevos mensajes entrantes por el WEBSOCKET
-	reader(ws)
+	go websocket.Write(ws)
+	websocket.Reader(ws)
 }
 
 func setupRoutes() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	/*http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Servidor Go con WEBSOCKET")
-	})
+	})*/
 	// mape our `/ws` endpoint to the `serveWs` function
 	http.HandleFunc("/ws", serveWs)
 }
