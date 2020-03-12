@@ -3,13 +3,14 @@ import "./App.css";
 import { connect, sendMsg } from "./api";
 import Header from './components/Header/Header';
 import CallJSON from "./components/CallJSON/CallJSON";
+import CallsWebsocket from "./components/CallWebsocket/CallWebsocket";
 
 
 class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      callsJSON: []
+      callsWebsocket: [],
     }
   }
 
@@ -17,7 +18,7 @@ class App extends Component {
     connect((msg) => {
       console.log("New Message")
       this.setState(prevState => ({
-        callsJSON: [...this.state.callsJSON, msg]
+        callsWebsocket: [...this.state.callsWebsocket, msg]
       }))
       console.log(this.state);
     });
@@ -25,15 +26,24 @@ class App extends Component {
 
   send() {
     console.log("Enviando mensaje: ");
-    sendMsg("Petición");
+    sendMsg("Petición Websocket");
   }
 
   render() {
     return (
       <div className="App">
         <Header />
-        <CallJSON callsJSON={this.state.callsJSON} />
-        <button onClick={this.send}>Hacer llamada al JSON</button>
+        <div className="container">
+          <div className="row">
+            <div className="col-sm">
+              <CallsWebsocket callsWebsocket={this.state.callsWebsocket} />
+              <button onClick={this.send}>Hacer llamada al Websocket</button>
+            </div>
+            <div className="col-sm">
+              <CallJSON />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
